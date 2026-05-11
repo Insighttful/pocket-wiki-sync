@@ -1,0 +1,107 @@
+[project]
+name = "pocket-wiki-sync"
+version = "0.0.1"
+description = "Sync HeyPocket AI recordings to local Obsidian-compatible wiki"
+requires-python = ">=3.12"
+
+dependencies = [
+    "typer>=0.9.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "aiohttp>=3.9.0",
+    "tenacity>=8.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.15.12",
+    "ty>=0.0.35",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=0.25.0",
+    "vulture>=2.16",
+    "pre-commit>=4.6.0",
+    "pymarkdownlnt>=0.9.36",
+    "deptry>=0.20.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[project.scripts]
+pocket-wiki = "cli:app"
+
+[tool.setuptools]
+py-modules = ["cli"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modules*", "shared*"]
+exclude = ["docs*"]
+
+[tool.pymarkdown]
+extensions.front-matter.enabled = true
+extensions.markdown-tables.enabled = true
+extensions.markdown-task-list-items.enabled = true
+extensions.markdown-strikethrough.enabled = true
+extensions.markdown-extended-autolinks.enabled = true
+extensions.markdown-disallow-raw-html.enabled = true
+
+plugins.md004.enabled = true
+plugins.md004.style = "dash"
+plugins.md013.enabled = false
+plugins.md026.enabled = false
+plugins.md033.enabled = false
+plugins.md046.enabled = false
+plugins.md049.enabled = true
+plugins.md049.style = "underscore"
+plugins.md050.enabled = true
+plugins.md050.style = "asterisk"
+
+[tool.uv]
+package = true
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # Pyflakes
+    "UP",        # pyupgrade
+    "B",         # flake8-bugbear
+    "SIM",       # flake8-simplify
+    "I",         # isort
+    "D",         # pydocstyle (Google convention)
+    "DOC",       # pydoclint (docstring completeness)
+    "N",         # pep8-naming
+    "C4",        # flake8-comprehensions
+    "C90",       # McCabe complexity
+    "ASYNC",     # flake8-async
+    "PTH",       # pathlib
+    "RSE",       # flake8-raise
+    "TD",        # flake8-todos
+    "TRY",       # tryceratops
+    "PERF",      # performance
+    "RUF",       # ruff-specific
+    "RET",       # return
+    "T20",       # flake8-print
+    "G",         # flake8-logging-format
+]
+extend-ignore = ["D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.isort]
+known-first-party = ["modules", "shared"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.deptry]
+optional_dependencies_dev_groups = ["dev"]
+
+[tool.deptry.per_rule_ignores]
+DEP004 = ["pytest"]

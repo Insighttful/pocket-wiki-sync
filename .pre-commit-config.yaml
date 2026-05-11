@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        name: ruff-fix
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+      - id: ruff
+        name: ruff-check
+
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty
+        entry: uv run -- ty check --error-on-warning
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: uv run -- pytest --strict-markers -q
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: vulture
+        name: vulture
+        entry: uv run -- vulture . --min-confidence=90 --exclude=.venv
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pymarkdown
+        name: pymarkdown
+        entry: uv run -- pymarkdown scan
+        language: system
+        types: [markdown]

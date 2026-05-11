@@ -1,0 +1,70 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+CDC
+PyCC
+.so
+.venv
+.venv
+venv
+ENV
+env
+env.bak
+venv-bak
+
+# Ruff
+.ruff_cache/
+
+# Python dist/build
+build/
+dist/
+wheelhouse/
+pip-wheel-metadata/
+lib/
+lite-
+pkg-config/
+
+# Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+workspace.xml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Release artifacts
+dist/
+*.tar.gz
+*.whl
+
+# Package metadata
+*.egg-info/
+
+# Sync state
+.last-sync
