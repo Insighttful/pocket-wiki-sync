@@ -38,7 +38,7 @@ def mock_env(temp_wiki_path):
         Mock WikiEnvironment instance.
     """
     env = MagicMock()
-    env.wiki_path = temp_wiki_path
+    env.wiki_raw_path = temp_wiki_path
     return env
 
 
@@ -384,13 +384,11 @@ class TestEnsureDirectories:
         """Test ensure_directories creates all required directories."""
         wiki_output.ensure_directories()
 
-        assert (temp_wiki_path / "raw" / "pocket").exists()
-        assert (temp_wiki_path / "concepts").exists()
-        assert (temp_wiki_path / "queries").exists()
+        assert temp_wiki_path.exists()
 
     def test_ensure_directories_idempotent(self, wiki_output, temp_wiki_path):
         """Test ensure_directories is safe to call multiple times."""
         wiki_output.ensure_directories()
         wiki_output.ensure_directories()  # Should not raise
 
-        assert (temp_wiki_path / "raw" / "pocket").exists()
+        assert temp_wiki_path.exists()

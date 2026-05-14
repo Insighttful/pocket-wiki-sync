@@ -29,7 +29,7 @@ This project is an application, not a library. Follow these rules:
    from shared.pocket.models import HeyPocketRecording
    from shared.pocket.client import HeyPocketClient
    from shared.pocket.config import HeyPocketConfig
-   from shared.environment import get_wiki_env
+   from shared.environment import get_wiki_env, get_heypocket_env, get_sync_env
    from shared.sync_state import SyncLock, SyncState
 
    # Bad — import switchboard (don't do this)
@@ -47,7 +47,14 @@ Prefer `pyproject.toml` as the configuration surface for all tools. If a tool su
 
 ## pre-commit
 
-Run on every commit. Order: ruff-fix → ruff-format → ruff-check → ty → pytest → vulture → pymarkdown. No errors/warnings.
+Run on every commit. Order: ruff-fix → ruff-format → ruff-check → ty → detect-secrets → pytest → vulture (min-confidence=65) → pymarkdown. No errors/warnings.
+
+When `detect-secrets` fails with “files were modified by this hook”:
+
+- It auto-updated `.secrets.baseline` with new patterns.
+- Run: `git diff .secrets.baseline`
+  - If changes are safe (test data, example keys), stage and commit them.
+  - If a real secret is detected, remove it from the code and use an env var instead.
 
 ## Test Structure
 
@@ -85,7 +92,16 @@ Every module under `modules/`, `shared/`, and `docs/` must have its own `AGENTS.
 
 ## Pocket Wiki Sync
 
-Syncs HeyPocket AI recordings/transcripts to a local wiki (Obsidian-compatible) via hourly CRON.
+Syncs HeyPocket AI recordings/transcripts to a local wiki (Obsidian-compatible) via CLI or CRON.
+Single responsibility: fetch from HeyPocket API → save transcripts as markdown to WIKI_RAW_PATH.
+
+### Core Principles
+
+- KISS, ergonomic, 12-factor-aligned:
+  - Config + secrets in `.env` via pydantic-settings (source of truth; .env values win over os.environ).
+  - No in-memory env pollution across runs/commands.
+  - Runtime/temporal state (last sync) in a single file (`/project-root/.last-sync`), not in `.env`.
+- WIKI_RAW_PATH is exactly where transcripts are saved; no magic subdirectories.
 
 ### API
 
@@ -104,28 +120,36 @@ Config in `.env`:
 
 ```bash
 HEYPOCKET_API_KEY=pk_xxx
+WIKI_RAW_PATH=~/wiki/raw   # or any path where you want transcripts saved
 ```
+
+On first run, if WIKI_RAW_PATH is not set, the CLI prompts once and writes it to .env.
 
 ### Usage
 
+Default behavior: fetch and sync all unsynced recordings. Use `--max N` only if you want to limit a single run.
+
 ```bash
-pocket-wiki sync               # Fetch recordings (default: 100)
-pocket-wiki sync --max 10    # Fetch specific number (with --dry-run to preview)
-pocket-wiki list-synced      # List synced recordings (local files only)
-pocket-wiki show-config      # Show config + validate API key
-pocket-wiki clean            # Clean up state files (--all to delete recordings)
+pocket-wiki sync               # Fetch all unsynced recordings
+pocket-wiki sync --max 10      # Limit this run to 10
+pocket-wiki sync --dry-run     # Preview what would be synced
+pocket-wiki sync --verbose     # Detailed logs for debugging
+pocket-wiki list-synced        # List synced recordings (local files only)
+pocket-wiki show-config        # Show config + validate API key
+pocket-wiki clean              # Clean up state files (--all to delete recordings)
 ```
 
 ### Sync State
 
-- Last sync timestamp stored in `.last-sync` (project root, gitignored)
-- Auto-fetches recordings newer than last sync
+- Last sync timestamp stored in `.last-sync` at project root (gitignored). This is the single source of truth; no backup copies.
+- On each run:
+  - Fetches recordings from last sync date.
+  - Filters out any not newer than the exact last_sync_dt.
+  - Optionally ignores “personal”/“private” tags (default: enabled via IGNORE_PRIVATE_TAGS).
 
 ### Output
 
-```text
-~/wiki/
-├── raw/pocket/    # Synced transcripts (YYYY-MM-DD-slug.md)
-├── concepts/      # Source index
-└── queries/       # Sync logs
-```
+Transcripts are saved directly under WIKI_RAW_PATH as:
+`<YYYY-MM-DD>-<slug>.md`
+
+No extra directories are created by this tool.

@@ -11,10 +11,6 @@ modules/
     └── test_wiki.py
 ```
 
-## Child Modules
-
-- [wiki/](wiki/AGENTS.md) - if wiki becomes a package
-
 ## Key Knowledge for Agents
 
 ### CLI (project root `cli.py`)
@@ -30,7 +26,6 @@ modules/
 
 ### Wiki Output (modules/wiki.py)
 
-- `WikiOutput` class saves recordings as markdown
+- `WikiOutput` class saves recordings as markdown directly under WIKI_RAW_PATH.
 - Output format: frontmatter + title + summary + transcript
-- Creates index at `concepts/pocket-sources.md`
-- Creates sync logs at `queries/pocket-sync-YYYY-MM-DD.md`
+- No extra directories or indexes; single responsibility.
