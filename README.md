@@ -221,7 +221,3 @@ just
 - **Pocket product**: [heypocket.com](https://heypocket.com/pages/home-v2c)
 - **Pocket API docs**: [docs.heypocketai.com/docs/api](https://docs.heypocketai.com/docs/api)
 - **API base URL**: `https://public.heypocketai.com/api/v1`
-
-## License
-
-MIT
