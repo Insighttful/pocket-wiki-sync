@@ -49,6 +49,13 @@ Prefer `pyproject.toml` as the configuration surface for all tools. If a tool su
 
 Run on every commit. Order: ruff-fix → ruff-format → ruff-check → ty → detect-secrets → pytest → vulture (min-confidence=65) → pymarkdown. No errors/warnings.
 
+When `detect-secrets` fails with “files were modified by this hook”:
+
+- It auto-updated `.secrets.baseline` with new patterns.
+- Run: `git diff .secrets.baseline`
+  - If changes are safe (test data, example keys), stage and commit them.
+  - If a real secret is detected, remove it from the code and use an env var instead.
+
 ## Test Structure
 
 - **Single file module** (`cli.py`): `tests/test_cli.py`

@@ -40,6 +40,6 @@ repos:
 
       - id: detect-secrets
         name: detect-secrets (secrets scan)
-        entry: bash -c 'uv run -- detect-secrets scan --baseline .secrets.baseline || uv run -- detect-secrets update --baseline .secrets.baseline'
-        language: system
-        types: [text]
+        entry: ./scripts/pre-commit-detect-secrets.sh
+        language: script
+        pass_filenames: false
