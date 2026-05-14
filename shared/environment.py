@@ -1,9 +1,19 @@
-"""Environment configuration using pydantic-settings."""
+"""Environment configuration using pydantic-settings.
+
+.env is the source of truth: on import we load it with override=True so its
+values take precedence over any in-memory environment variables. This ensures
+changes to .env or deletion of state files are always respected, and avoids
+in-memory env pollution across runs/commands.
+"""
 
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Ensure .env is authoritative for this process (idempotent).
+load_dotenv(".env", override=True)
 
 
 class Environment(BaseSettings):
@@ -17,25 +27,83 @@ class Environment(BaseSettings):
 
 
 class WikiEnvironment(Environment):
-    """Wiki-specific environment configuration."""
+    """Wiki-specific environment configuration.
 
-    wiki_path: Path = Field(
+    Uses WIKI_RAW_PATH to align with Karpathy's LLM Wiki convention:
+    raw files are stored under a 'raw' directory in the wiki root.
+    """
+
+    wiki_raw_path: Path = Field(
         default=Path.home() / "wiki",
-        description="Path to wiki directory",
+        alias="WIKI_RAW_PATH",
+        description="Root path to the wiki where raw/pocket/ will be created.",
     )
 
 
-class PocketEnvironment(Environment):
-    """Pocket API environment configuration."""
+def _ensure_wiki_raw_path_in_env() -> None:
+    """Ensure WIKI_RAW_PATH is set in .env (source of truth).
 
-    pocket_consumer_key: str = Field(default="", alias="POCKET_CONSUMER_KEY")
-    pocket_access_token: str = Field(default="", alias="POCKET_ACCESS_TOKEN")
-    pocket_max_retries: int = Field(default=3, alias="POCKET_MAX_RETRIES")
-    pocket_base_delay: float = Field(default=1.0, alias="POCKET_BASE_DELAY")
-    pocket_max_delay: float = Field(default=60.0, alias="POCKET_MAX_DELAY")
-    pocket_rate_limit_per_minute: int = Field(
-        default=60, alias="POCKET_RATE_LIMIT_PER_MINUTE"
-    )
+    If missing or empty in .env, prompts the user once and persists it.
+    We intentionally do NOT mutate os.environ here; pydantic-settings reads
+    directly from .env with env_file_priority=True.
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    env_path = project_root / ".env"
+
+    # Check if WIKI_RAW_PATH is already defined in .env
+    if env_path.exists():
+        content = env_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("WIKI_RAW_PATH"):
+                value = stripped.split("=", 1)[1].strip().strip("\"'")
+                if value:
+                    return
+
+    # Not set yet -> prompt user
+    import typer
+
+    default_value = str(Path.home() / "wiki/raw")
+    typer.echo("Transcripts will be saved directly into the path you provide.")
+    prompt = f"Enter transcripts directory (default {default_value}): "
+    user_input = input(prompt).strip()
+    chosen = user_input or default_value
+
+    # Read existing .env content
+    env_content = ""
+    if env_path.exists():
+        env_content = env_path.read_text(encoding="utf-8")
+
+    lines = []
+    updated = False
+    for line in env_content.splitlines(keepends=True) or []:
+        if line.strip().startswith("WIKI_RAW_PATH"):
+            lines.append(f"WIKI_RAW_PATH={chosen}\n")
+            updated = True
+        else:
+            lines.append(line)
+
+    # Append if not already present
+    if not updated:
+        if env_content and not env_content.endswith("\n"):
+            lines.append("\n")
+        lines.append(f"WIKI_RAW_PATH={chosen}\n")
+
+    with Path(env_path).open("w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
+def get_wiki_env() -> WikiEnvironment:
+    """Get wiki environment configuration.
+
+    On first run, if WIKI_RAW_PATH is not set, prompts the user once and
+    persists it to .env (no restart required).
+
+    Returns:
+        WikiEnvironment instance.
+    """
+    _ensure_wiki_raw_path_in_env()
+    return WikiEnvironment()
 
 
 class HeyPocketEnvironment(Environment):
@@ -50,45 +118,22 @@ class HeyPocketEnvironment(Environment):
     heypocket_max_concurrent: int = Field(default=3, alias="HEYPOCKET_MAX_CONCURRENT")
 
 
-class ScraperEnvironment(Environment):
-    """Scraper environment configuration."""
+class SyncEnvironment(Environment):
+    """Sync behavior configuration."""
 
-    # Rate limiting
-    min_delay_seconds: float = Field(default=1.0)
-    max_delay_seconds: float = Field(default=3.0)
-    jitter_factor: float = Field(default=0.5)
-
-    # Discovery settings
-    max_discovery_depth: int = Field(default=5)
-    max_pages_to_discover: int = Field(default=100)
-    follow_external_links: bool = Field(default=False)
-
-    # Site configuration
-    site_name: str = Field(default="heypocket")
-    base_url: str = Field(default="https://docs.heypocketai.com")
-
-    # Playwright settings
-    headless: bool = Field(default=True)
-    timeout_ms: int = Field(default=30000)
-    wait_until: str = Field(default="networkidle")
+    ignore_private_tags: bool = Field(
+        default=True,
+        description="Ignore recordings tagged as personal or private",
+    )
 
 
-def get_wiki_env() -> WikiEnvironment:
-    """Get wiki environment configuration.
+def get_sync_env() -> SyncEnvironment:
+    """Get sync environment configuration.
 
     Returns:
-        WikiEnvironment instance.
+        SyncEnvironment instance.
     """
-    return WikiEnvironment()
-
-
-def get_pocket_env() -> PocketEnvironment:
-    """Get Pocket environment configuration.
-
-    Returns:
-        PocketEnvironment instance.
-    """
-    return PocketEnvironment()
+    return SyncEnvironment()
 
 
 def get_heypocket_env() -> HeyPocketEnvironment:
@@ -98,12 +143,3 @@ def get_heypocket_env() -> HeyPocketEnvironment:
         HeyPocketEnvironment instance.
     """
     return HeyPocketEnvironment()
-
-
-def get_scraper_env() -> ScraperEnvironment:
-    """Get scraper environment configuration.
-
-    Returns:
-        ScraperEnvironment instance.
-    """
-    return ScraperEnvironment()

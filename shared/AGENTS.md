@@ -6,29 +6,33 @@ Weak models, clients, and cross-cutting concerns.
 
 ```text
 shared/
-├── environment.py    # pydantic-settings based config (HeyPocketEnvironment, WikiEnvironment)
+├── environment.py    # pydantic-settings based config (HeyPocketEnvironment, WikiEnvironment, SyncEnvironment)
 ├── pocket/           # HeyPocket API client and models (orthogonal module)
 │   ├── __init__.py   # Public exports
 │   ├── models.py     # Pydantic models (HeyPocketRecording, TranscriptData, etc.)
 │   ├── config.py     # Configuration (HeyPocketConfig)
 │   └── client.py     # API client (HeyPocketClient)
 ├── errors.py         # Custom exceptions (HeyPocketError, APIError, etc.)
+├── sync_state.py     # Sync state management (.last-sync file handling)
 └── __init__.py
 ```
-
-## Child Modules
-
-- [environment.py](environment/AGENTS.md) - if becomes package
-- [pocket/](pocket/AGENTS.md) - orthogonal module with models, config, client
 
 ## Key Knowledge for Agents
 
 ### Environment (shared/environment.py)
 
-- Uses pydantic-settings with `.env` file
-- `HeyPocketEnvironment` - API key, base URL, concurrency settings
-- `WikiEnvironment` - wiki path configuration
-- Load via: `get_heypocket_env()`, `get_wiki_env()`
+- Uses pydantic-settings with `.env` file as the source of truth:
+  - `.env` values override any in-memory environment variables.
+  - No in-memory env pollution across runs/commands.
+- Core classes:
+  - `Environment`: base class with env_file and env_file_priority config.
+  - `WikiEnvironment`: WIKI_RAW_PATH configuration.
+  - `HeyPocketEnvironment`: API key, base URL, concurrency settings.
+  - `SyncEnvironment`: sync behavior (e.g., ignore_private_tags).
+- Load via:
+  - `get_wiki_env()` — prompts once for WIKI_RAW_PATH on first run if not set in .env.
+  - `get_heypocket_env()` — HeyPocket API config.
+  - `get_sync_env()` — sync behavior configuration.
 
 ### Pocket Module (shared/pocket/)
 
@@ -48,6 +52,15 @@ shared/
   - `fetch_all_since(since_date)` - fetch all since last sync
 - Uses tenacity for retry with exponential backoff
 - Custom errors from `shared/errors.py`
+
+### Sync State (shared/sync_state.py)
+
+- Manages `.last-sync` file at project root (single source of truth; no wiki backup).
+- Provides:
+  - `get_last_sync()` — precise ISO timestamp.
+  - `get_last_sync_date()` — YYYY-MM-DD for API calls.
+  - `set_last_sync(timestamp)` — update last sync time.
+- Used by CLI to avoid re-fetching already-synced recordings.
 
 ### Errors (shared/errors.py)
 

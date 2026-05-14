@@ -23,6 +23,7 @@ dev = [
     "pre-commit>=4.6.0",
     "pymarkdownlnt>=0.9.36",
     "deptry>=0.20.0",
+    "detect-secrets>=1.5.0",
 ]
 
 [tool.pytest.ini_options]
