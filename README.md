@@ -45,7 +45,7 @@ That's it. Your recordings are now in `~/wiki/raw/pocket/` as markdown files.
 - Fetch recordings from the [Pocket API](https://docs.heypocketai.com/docs/api) with pagination
 - Save recordings as structured markdown files (transcript, summary, mind map, action items)
 - Idempotent sync — only saves new recordings, skips duplicates
-- Sync state tracking with `.last-sync` for incremental syncs
+- Incremental sync state tracked via `.last-sync` (single file, no backup copies)
 - Concurrent transcript downloads with circuit breaker and retry
 - Dry-run mode to preview what would be synced
 - Auto-generated sources index and daily sync logs
@@ -85,11 +85,13 @@ Any directory works — point it at your Obsidian vault, a Foam workspace, or a 
 
 ### Sync Recordings
 
+By default, all available unsynced recordings are fetched and saved. Use `--max` only if you want to cap how many are synced in a single run.
+
 ```bash
-# Sync new recordings (default: up to 100)
+# Sync new recordings (all by default)
 pocket-wiki sync
 
-# Sync with custom limit
+# Limit to N recordings this run
 pocket-wiki sync --max 10
 
 # Force full sync (ignore last sync timestamp)
@@ -219,7 +221,3 @@ just
 - **Pocket product**: [heypocket.com](https://heypocket.com/pages/home-v2c)
 - **Pocket API docs**: [docs.heypocketai.com/docs/api](https://docs.heypocketai.com/docs/api)
 - **API base URL**: `https://public.heypocketai.com/api/v1`
-
-## License
-
-MIT

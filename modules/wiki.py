@@ -1,18 +1,8 @@
 """Wiki output module — save HeyPocket recordings to local wiki format.
 
 Follows the LLM Wiki skill conventions for markdown structure, frontmatter,
-and wikilinks. Recordings are saved under the configured wiki path in a
-dedicated 'pocket' subdirectory structure.
-
-Directory layout:
-    <WIKI_PATH>/
-        raw/
-            pocket/
-                <YYYY-MM-DD>-<slug>.md  (single file per recording with all subtypes)
-        concepts/
-            pocket-sources.md           (index of all sources)
-        queries/
-            pocket-sync-YYYY-MM-DD.md   (sync log entry)
+and wikilinks. Recordings are saved directly under WIKI_RAW_PATH as:
+    <YYYY-MM-DD>-<slug>.md
 
 Each recording produces a single markdown file with YAML frontmatter containing:
 - id, title, created, recording_at, duration, state, language, tags
@@ -23,7 +13,6 @@ Each recording produces a single markdown file with YAML frontmatter containing:
 """
 
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,14 +29,12 @@ class WikiOutput:
 
     def __init__(self, env: WikiEnvironment):
         self.env = env
-        self.base_path = env.wiki_path / "raw" / "pocket"
-        self.concepts_path = env.wiki_path / "concepts"
-        self.queries_path = env.wiki_path / "queries"
+        # WIKI_RAW_PATH is exactly where transcripts are saved.
+        self.base_path = env.wiki_raw_path
 
     def ensure_directories(self) -> None:
-        """Create all required wiki directories if they don't exist."""
-        for path in [self.base_path, self.concepts_path, self.queries_path]:
-            path.mkdir(parents=True, exist_ok=True)
+        """Create the transcripts directory if it doesn't exist."""
+        self.base_path.mkdir(parents=True, exist_ok=True)
         logger.debug("Ensured wiki directories exist")
 
     def save_recording(self, recording: HeyPocketRecording) -> Path | None:
@@ -233,98 +220,3 @@ class WikiOutput:
                 lines.append(f"  - type: {item.action_type}")
         lines.append("")
         return lines
-
-    def update_sources_index(self, recordings: list[HeyPocketRecording]) -> None:
-        """Update the sources index in concepts/ directory."""
-        index_path = self.concepts_path / "pocket-sources.md"
-        created = datetime.now(UTC).strftime("%Y-%m-%d")
-
-        lines = [
-            "---",
-            "title: Pocket Sources Index",
-            "created: " + created,
-            "updated: " + created,
-            "type: entity",
-            "tags: [pocket, sources, collection]",
-            "---",
-            "",
-            "# Pocket Sources Index",
-            "",
-            "> Index of all HeyPocket recordings synced to this wiki.",
-            "> Auto-generated — do not edit manually.",
-            "",
-            "## Recordings",
-            "",
-        ]
-
-        for recording in sorted(recordings, key=lambda r: r.title.lower()):
-            slug = recording.slug
-            lines.append(f"- [[pocket/{slug}|{recording.title}]]")
-
-        lines.append("")
-        lines.append(
-            "*Last updated: " + datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC") + "*"
-        )
-        lines.append("")
-
-        index_path.parent.mkdir(parents=True, exist_ok=True)
-        index_path.write_text("\n".join(lines), encoding="utf-8")
-        logger.info("Updated sources index: %s", index_path.name)
-
-    def create_sync_log(self, recordings: list[HeyPocketRecording]) -> None:
-        """Create a sync log entry in queries/ directory."""
-        now = datetime.now(UTC)
-        date_str = now.strftime("%Y-%m-%d")
-        log_path = self.queries_path / f"pocket-sync-{date_str}.md"
-
-        # Don't overwrite existing logs
-        if log_path.exists():
-            logger.debug("Sync log already exists for %s, appending", date_str)
-            content = log_path.read_text(encoding="utf-8")
-            if "## Synced Recordings" in content:
-                # Append to existing section
-                content = content.replace(
-                    "## Synced Recordings",
-                    "## Synced Recordings\n\n### "
-                    + now.strftime("%H:%M UTC")
-                    + " sync",
-                )
-                for recording in recordings:
-                    content += f"\n- {recording.title}"
-            else:
-                # Add new section at end
-                sync_time = now.strftime("%H:%M UTC")
-                content += f"\n\n## Synced Recordings\n\n### {sync_time} sync\n\n"
-                for recording in recordings:
-                    content += f"- {recording.title}\n"
-            log_path.write_text(content, encoding="utf-8")
-            return
-
-        # Create new log file
-        created = now.strftime("%Y-%m-%d")
-        lines = [
-            "---",
-            "title: Pocket Sync Log - " + date_str,
-            "created: " + created,
-            "updated: " + created,
-            "type: query",
-            "tags: [pocket, sync, log]",
-            "---",
-            "",
-            "# Pocket Sync Log - " + date_str,
-            "",
-            "> Automated sync log — generated by pocket-wiki-sync",
-            "",
-            "## Synced Recordings",
-            "",
-        ]
-
-        lines.extend(f"- {recording.title}" for recording in recordings)
-
-        lines.append("")
-        lines.append(f"*Total recordings synced: {len(recordings)}*")
-        lines.append("")
-
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        log_path.write_text("\n".join(lines), encoding="utf-8")
-        logger.info("Created sync log: %s", log_path.name)

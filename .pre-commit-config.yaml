@@ -27,7 +27,7 @@ repos:
 
       - id: vulture
         name: vulture
-        entry: uv run -- vulture . --min-confidence=90 --exclude=.venv
+        entry: uv run -- vulture . --min-confidence=65 --exclude=.venv
         language: system
         types: [python]
         pass_filenames: false
@@ -37,3 +37,9 @@ repos:
         entry: uv run -- pymarkdown scan
         language: system
         types: [markdown]
+
+      - id: detect-secrets
+        name: detect-secrets (secrets scan)
+        entry: ./scripts/pre-commit-detect-secrets.sh
+        language: script
+        pass_filenames: false

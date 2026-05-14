@@ -127,7 +127,7 @@ class HeyPocketRecording(BaseModel):
     # Metadata
     duration: int | None = None
     state: str = "unknown"
-    language: str = "en"
+    language: str | None = "en"
     description: str | None = None
 
     # Content

@@ -7,9 +7,8 @@ from pathlib import Path
 class SyncState:
     """Manages the last sync timestamp for incremental syncs."""
 
-    def __init__(self, state_file: Path, backup_dir: Path | None = None):
+    def __init__(self, state_file: Path):
         self.state_file = state_file
-        self.backup_dir = backup_dir
 
     def get_last_sync(self) -> datetime | None:
         """Read the last sync timestamp from state file.
@@ -36,30 +35,29 @@ class SyncState:
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         self.state_file.write_text(timestamp.isoformat())
 
-        # Backup to wiki directory if configured
-        if self.backup_dir:
-            self._backup_to_wiki(timestamp)
+    def get_last_sync_iso(self) -> str | None:
+        """Get last sync timestamp as ISO string (for internal use/logging).
 
-    def _backup_to_wiki(self, timestamp: datetime) -> None:
-        """Backup last sync to wiki directory."""
-        if not self.backup_dir:
-            return
-        try:
-            backup_path = self.backup_dir / ".pocket-last-sync"
-            self.backup_dir.mkdir(parents=True, exist_ok=True)
-            backup_path.write_text(timestamp.isoformat())
-        except OSError:
-            pass  # Backup failure is non-fatal
+        Returns:
+            ISO timestamp, or None if never synced.
+        """
+        last_sync = self.get_last_sync()
+        if last_sync:
+            return last_sync.isoformat()
+        return None
 
     def get_last_sync_date(self) -> str | None:
-        """Get last sync date as YYYY-MM-DD string for API.
+        """Get last sync date as YYYY-MM-DD for API calls.
+
+        HeyPocket expects a simple date, not a full timestamp.
 
         Returns:
             Date string in YYYY-MM-DD format, or None if never synced.
         """
         last_sync = self.get_last_sync()
         if last_sync:
-            return last_sync.strftime("%Y-%m-%d")
+            utc_dt = last_sync.astimezone(UTC)
+            return utc_dt.strftime("%Y-%m-%d")
         return None
 
 

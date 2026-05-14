@@ -43,10 +43,12 @@ format:
 format-check:
     uv run ruff format --check .
 
-# Full quality gate (pre-commit on all files)
+# Full quality gate (auto-fix lint/format, then enforce with pre-commit)
 check: quality-gate
 
 quality-gate:
+    uv run ruff check --fix . || true
+    uv run ruff format . || true
     uv run pre-commit run --all-files
 
 # Auto-fix lint issues and format

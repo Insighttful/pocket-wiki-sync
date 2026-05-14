@@ -40,8 +40,28 @@ class TestSyncState:
         assert state_file.exists()
         assert "2026-05-10" in state_file.read_text()
 
-    def test_get_last_sync_date_returns_formatted_string(self, tmp_path):
-        """Test get_last_sync_date returns YYYY-MM-DD string."""
+    def test_get_last_sync_iso_returns_iso_string(self, tmp_path):
+        """Test get_last_sync_iso returns full ISO timestamp."""
+        state_file = tmp_path / ".last-sync"
+        state_file.write_text("2026-05-10T14:30:00+00:00")
+        sync_state = SyncState(state_file)
+
+        result = sync_state.get_last_sync_iso()
+
+        assert result is not None
+        assert "2026-05-10T14:30:00" in result
+
+    def test_get_last_sync_iso_returns_none_when_no_file(self, tmp_path):
+        """Test get_last_sync_iso returns None when no file."""
+        state_file = tmp_path / ".last-sync"
+        sync_state = SyncState(state_file)
+
+        result = sync_state.get_last_sync_iso()
+
+        assert result is None
+
+    def test_get_last_sync_date_returns_yyyy_mm_dd(self, tmp_path):
+        """Test get_last_sync_date returns YYYY-MM-DD for API calls."""
         state_file = tmp_path / ".last-sync"
         state_file.write_text("2026-05-10T14:30:00+00:00")
         sync_state = SyncState(state_file)
@@ -58,43 +78,6 @@ class TestSyncState:
         result = sync_state.get_last_sync_date()
 
         assert result is None
-
-
-class TestSyncStateBackup:
-    """Tests for SyncState backup functionality."""
-
-    def test_backup_to_wiki_creates_backup_file(self, tmp_path):
-        """Test backup is created in wiki directory."""
-        state_file = tmp_path / ".last-sync"
-        backup_dir = tmp_path / "wiki"
-        sync_state = SyncState(state_file, backup_dir=backup_dir)
-
-        sync_state.set_last_sync(datetime(2026, 5, 10, 14, 30, tzinfo=UTC))
-
-        backup_file = backup_dir / ".pocket-last-sync"
-        assert backup_file.exists()
-        assert "2026-05-10" in backup_file.read_text()
-
-    def test_backup_failure_is_non_fatal(self, tmp_path):
-        """Test backup failure doesn't raise exception."""
-        state_file = tmp_path / ".last-sync"
-        # Pass a file as backup_dir to cause failure
-        backup_file = tmp_path / "backup"
-        backup_file.write_text("existing")
-        sync_state = SyncState(state_file, backup_dir=backup_file)
-
-        # Should not raise
-        sync_state.set_last_sync(datetime(2026, 5, 10, 14, 30, tzinfo=UTC))
-
-    def test_backup_not_created_when_no_backup_dir(self, tmp_path):
-        """Test no backup when backup_dir is None."""
-        state_file = tmp_path / ".last-sync"
-        sync_state = SyncState(state_file, backup_dir=None)
-
-        sync_state.set_last_sync(datetime(2026, 5, 10, 14, 30, tzinfo=UTC))
-
-        # No backup file should exist
-        assert not (tmp_path / ".pocket-last-sync").exists()
 
 
 class TestSyncLock:
